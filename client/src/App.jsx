@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Header from './components/Header';
 import Home from './pages/Home';
 import LoginSignup from './pages/LoginSignup';
@@ -78,6 +79,7 @@ const App = () => {
             <p>&copy; {new Date().getFullYear()} TargetImpact Platforms. Sample take-home assignment.</p>
           </footer>
         </div>
+        <Analytics />
       </BrowserRouter>
     </AuthProvider>
   );
