@@ -7,11 +7,31 @@ const { rateLimit } = require('express-rate-limit');
 // Initialise Express App
 const app = express();
 
+const extraAllowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // tools/curl/mobile apps may send no Origin
+  if (origin.startsWith('http://localhost:')) return true;
+  if (origin === process.env.CLIENT_URL) return true;
+  if (extraAllowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+    return hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+};
+
 // Middleware
 app.use(helmet());
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin.startsWith('http://localhost:') || origin === process.env.CLIENT_URL) {
+    // Allow localhost, configured origins, and all Vercel preview/prod hosts.
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
