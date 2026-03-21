@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../App';
+import { AuthContext } from '../auth-context';
 import { Flag, UserCircle, Target } from 'lucide-react';
 
 const Header = () => {

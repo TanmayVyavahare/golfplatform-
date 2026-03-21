@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { Target, Heart, PlusCircle, Activity, UploadCloud, CheckCircle, AlertTriangle, CreditCard, Lock } from 'lucide-react';
-import { AuthContext } from '../App';
+import { AuthContext } from '../auth-context';
 import { Link } from 'react-router-dom';
 import api from '../api';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_dummy');
-
 const DUMMY_SCORES = [
     { id: '1', score: 36, played_at: '2026-03-01' },
     { id: '2', score: 42, played_at: '2026-03-05' },
@@ -15,17 +11,16 @@ const DUMMY_SCORES = [
 ];
 
 const Dashboard = () => {
-    const { user } = useContext(AuthContext);
+    const { user, setUser } = useContext(AuthContext);
     const [scores, setScores] = useState([]);
     const [winnings, setWinnings] = useState([]);
     const [newScore, setNewScore] = useState('');
     const [newDate, setNewDate] = useState('');
-    const [loading, setLoading] = useState(true);
 
     const isDemo = user?.id?.startsWith('demo-');
     const isSubscribed = user?.subscription_status === 'active';
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             if (isDemo) {
                 setScores(DUMMY_SCORES);
@@ -38,10 +33,8 @@ const Dashboard = () => {
             setWinnings([{ id: 'w1', draw_month: 'Mar 2026', match_count: 4, prize: 450, status: 'pending', proof_url: null }]);
         } catch (err) {
             console.error("Dashboard data load failed", err);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [isDemo]);
 
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
@@ -54,12 +47,15 @@ const Dashboard = () => {
             api.post('/subscriptions/payment-success', { 
                 payment_id: 'stripe_success',
                 plan_type: plan || 'premium'
-            }).then(() => {
+            }).then((res) => {
+                if (res.data?.user) {
+                    setUser(res.data.user);
+                }
                 alert(`Payment Successful! Your contribution is appreciated.`);
                 // Clear the query params
                 window.history.replaceState({}, document.title, window.location.pathname);
                 fetchData();
-            }).catch(err => {
+            }).catch(() => {
                 alert('Could not record payment explicitly, but it may have been processed.');
             });
         }
@@ -69,8 +65,11 @@ const Dashboard = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        fetchData(); 
-    }, [isDemo]);
+        // Defer initial fetch so state updates are not executed synchronously in effect body.
+        queueMicrotask(() => {
+            fetchData();
+        });
+    }, [fetchData, setUser]);
 
     const handleAddScore = async (e) => {
         e.preventDefault();

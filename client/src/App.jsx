@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -8,8 +8,8 @@ import Subscribe from './pages/Subscribe';
 import AdminDashboard from './pages/AdminDashboard';
 import Charities from './pages/Charities';
 import api from './api';
+import { AuthContext } from './auth-context';
 //creates gloabal storage for user data 
-export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -33,7 +33,7 @@ const AuthProvider = ({ children }) => {
           try {
             const res = await api.get('/profile');
             setUser(res.data);
-          } catch (err) {
+          } catch {
             localStorage.removeItem('token');
           }
         }
