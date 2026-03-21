@@ -59,7 +59,7 @@ const Charities = () => {
                             
                             <div className="mt-6 pt-4 border-t border-gray-100 text-sm font-medium text-gray-700">
                                 <span className="block text-xs uppercase tracking-wider text-gray-400 mb-1">Total Contributions Generated</span>
-                                <span className="text-emerald-600 font-extrabold text-lg">£{charity.total_contributions || '0'}</span>
+                                <span className="text-emerald-600 font-extrabold text-lg">₹{charity.total_contributions || '0'}</span>
                             </div>
                             
                             <div className="mt-4 bg-gray-50 border rounded p-3">

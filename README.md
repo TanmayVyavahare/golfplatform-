@@ -81,7 +81,7 @@ Here is everything an evaluator or technical interviewer will likely ask you abo
 *   **10%** — The strict minimum slice taken out of every active subscription allocated natively to charity.
 *   **5 Scores** — The maximum rolling size of active Stableford scores a user can keep in the queue before older ones drop off.
 *   **1-45** — The valid number range of Stableford inputs accepted into the SQL database.
-*   **£9.99 / £99.00** — The translated Monthly / Yearly subscription plan costs.
+*   **₹999 / ₹9,900** — The translated Monthly / Yearly subscription plan costs.
 
 *End of Document. Built to demonstrate full-stack proficiency.*
 
@@ -192,7 +192,7 @@ Supabase is a giant Excel spreadsheet in the cloud, running on **PostgreSQL**.
 3.  **`draws`**: The record of the monthly lotteries.
     *   *Columns:* `id`, `draw_month` (e.g., March 2026), `winning_numbers` (the lucky numbers drawn).
 4.  **`winnings`**: The bridge connecting a User to a Draw if they won money.
-    *   *Columns:* `user_id`, `draw_id`, `match_count` (how many numbers they guessed right), `prize` (£450), `status` (pending or paid).
+    *   *Columns:* `user_id`, `draw_id`, `match_count` (how many numbers they guessed right), `prize` (₹450), `status` (pending or paid).
 
 ### Row Level Security (RLS)
 RLS is a database forcefield. If I log in as User A, I should NOT be able to request User B's golf scores or credit card status. RLS uses the JWT token to say "You can only SELECT rows where `user_id` matches your own token ID." This stops hackers dead in their tracks. Admin tables have RLS policies that say "Only allow if `role = admin`". 

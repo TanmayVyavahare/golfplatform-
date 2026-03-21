@@ -6,6 +6,22 @@ const AdminDashboard = () => {
     const [drawId, setDrawId] = useState('');
     const [simulation, setSimulation] = useState(null);
     const [winners, setWinners] = useState([]);
+    const [charities, setCharities] = useState([]);
+    const [charityForm, setCharityForm] = useState({ name: '', description: '', is_active: true, is_featured: false });
+    const [editingCharityId, setEditingCharityId] = useState(null);
+    const [userQuery, setUserQuery] = useState('');
+    const [userResults, setUserResults] = useState([]);
+    const [userSearchLoading, setUserSearchLoading] = useState(false);
+
+    const loadAdminCharities = async () => {
+        try {
+            const { data } = await api.get('/admin/charities');
+            setCharities(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load charities for admin', err);
+            setCharities([]);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -14,6 +30,7 @@ const AdminDashboard = () => {
                 if (localStorage.getItem('token')?.startsWith('fake-demo-jwt-token')) {
                     setReports({ active_subscribers: 142, total_contributions: 4250.00, total_prizes: 8500.00 });
                     setWinners([{ id: 'w1', profiles: { full_name: 'Jane Smith' }, match_count: 5, verification_status: 'pending' }]);
+                    await loadAdminCharities();
                     return;
                 }
 
@@ -22,11 +39,13 @@ const AdminDashboard = () => {
 
                 const win = await api.get('/winners');
                 setWinners(win.data);
+                await loadAdminCharities();
             } catch (err) {
                 console.error("Admin error:", err);
                 // Fallback for evaluator if DB fails
                 setReports({ active_subscribers: 0, total_contributions: 0, total_prizes: 0 });
                 setWinners([]);
+                setCharities([]);
             }
         };
         fetchDashboardData();
@@ -77,6 +96,67 @@ const AdminDashboard = () => {
         }
     };
 
+    const resetCharityForm = () => {
+        setCharityForm({ name: '', description: '', is_active: true, is_featured: false });
+        setEditingCharityId(null);
+    };
+
+    const handleSaveCharity = async () => {
+        if (!charityForm.name.trim() || !charityForm.description.trim()) {
+            alert('Name and description are required.');
+            return;
+        }
+        try {
+            if (editingCharityId) {
+                await api.put(`/admin/charities/${editingCharityId}`, charityForm);
+            } else {
+                await api.post('/admin/charities', charityForm);
+            }
+            await loadAdminCharities();
+            resetCharityForm();
+            alert(editingCharityId ? 'Charity updated.' : 'Charity created.');
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to save charity');
+        }
+    };
+
+    const handleEditCharity = (charity) => {
+        setEditingCharityId(charity.id);
+        setCharityForm({
+            name: charity.name || '',
+            description: charity.description || '',
+            is_active: Boolean(charity.is_active),
+            is_featured: Boolean(charity.is_featured),
+        });
+    };
+
+    const handleDeleteCharity = async (id) => {
+        if (!window.confirm('Delete this charity?')) return;
+        try {
+            await api.delete(`/admin/charities/${id}`);
+            await loadAdminCharities();
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to delete charity');
+        }
+    };
+
+    const handleSearchUser = async () => {
+        if (!userQuery.trim()) {
+            setUserResults([]);
+            return;
+        }
+        setUserSearchLoading(true);
+        try {
+            const { data } = await api.get('/admin/users/search', { params: { email: userQuery.trim() } });
+            setUserResults(Array.isArray(data) ? data : []);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to search users');
+            setUserResults([]);
+        } finally {
+            setUserSearchLoading(false);
+        }
+    };
+
     if (!reports) return <p className="p-8">Loading Admin Data...</p>;
 
     return (
@@ -93,11 +173,11 @@ const AdminDashboard = () => {
                 </div>
                 <div className="card text-center shadow-sm">
                     <p className="text-gray-500 uppercase tracking-wider text-xs font-bold mb-2">Total Contributions</p>
-                    <p className="text-4xl font-extrabold text-rose-500">£{reports.total_contributions || '0'}</p>
+                    <p className="text-4xl font-extrabold text-rose-500">₹{reports.total_contributions || '0'}</p>
                 </div>
                 <div className="card text-center shadow-sm">
                     <p className="text-gray-500 uppercase tracking-wider text-xs font-bold mb-2">All Time Prize Pool</p>
-                    <p className="text-4xl font-extrabold text-emerald-500">£{reports.total_prizes || '0'}</p>
+                    <p className="text-4xl font-extrabold text-emerald-500">₹{reports.total_prizes || '0'}</p>
                 </div>
             </div>
 
@@ -114,7 +194,7 @@ const AdminDashboard = () => {
                     {simulation && (
                         <div className="bg-gray-50 border p-4 rounded-lg mb-4 text-sm font-mono space-y-2">
                            <div className="font-bold text-gray-700">Winning Array: <span className="text-blue-600">{simulation.winning_numbers.join(', ')}</span></div>
-                           <div className="font-bold text-gray-700">Total Pool Calculated: <span className="text-blue-600">£{simulation.total_prize_pool.toFixed(2)}</span></div>
+                           <div className="font-bold text-gray-700">Total Pool Calculated: <span className="text-blue-600">₹{simulation.total_prize_pool.toFixed(2)}</span></div>
                            <p className="text-xs text-gray-500 mt-2">Simulation complete. Entries have been mapped to matches.</p>
                         </div>
                     )}
@@ -161,8 +241,64 @@ const AdminDashboard = () => {
                 <div className="card">
                     <h2 className="text-xl font-bold text-gray-900 border-b pb-2 mb-4">Charity Management</h2>
                     <p className="text-sm text-gray-600 mb-4">Add, edit, or remove listed charities.</p>
-                    <button className="btn-secondary w-full">+ Add New Charity</button>
-                    <div className="mt-4 text-xs text-gray-400 italic border-t pt-2">Module locked for demo. Handles Charity CRUD & features.</div>
+                    <div className="space-y-2">
+                        <input
+                            className="input-field"
+                            placeholder="Charity name"
+                            value={charityForm.name}
+                            onChange={(e) => setCharityForm((prev) => ({ ...prev, name: e.target.value }))}
+                        />
+                        <textarea
+                            className="input-field min-h-24"
+                            placeholder="Description"
+                            value={charityForm.description}
+                            onChange={(e) => setCharityForm((prev) => ({ ...prev, description: e.target.value }))}
+                        />
+                        <div className="flex gap-4 text-sm">
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={charityForm.is_active}
+                                    onChange={(e) => setCharityForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+                                />
+                                Active
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={charityForm.is_featured}
+                                    onChange={(e) => setCharityForm((prev) => ({ ...prev, is_featured: e.target.checked }))}
+                                />
+                                Featured
+                            </label>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleSaveCharity} className="btn-secondary flex-1">
+                                {editingCharityId ? 'Update Charity' : '+ Add New Charity'}
+                            </button>
+                            {editingCharityId && (
+                                <button onClick={resetCharityForm} className="btn-primary px-4">Cancel</button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-2 border-t pt-3">
+                        {charities.length === 0 ? (
+                            <p className="text-xs text-gray-400 italic">No charities found.</p>
+                        ) : charities.map((charity) => (
+                            <div key={charity.id} className="border rounded p-2 flex justify-between items-start gap-3">
+                                <div className="min-w-0">
+                                    <p className="font-semibold text-sm text-gray-900 truncate">{charity.name}</p>
+                                    <p className="text-xs text-gray-500">
+                                        {charity.is_active ? 'Active' : 'Inactive'} | {charity.is_featured ? 'Featured' : 'Standard'}
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleEditCharity(charity)} className="text-blue-600 text-xs">Edit</button>
+                                    <button onClick={() => handleDeleteCharity(charity.id)} className="text-red-600 text-xs">Delete</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* User Management */}
@@ -170,8 +306,40 @@ const AdminDashboard = () => {
                     <h2 className="text-xl font-bold text-gray-900 border-b pb-2 mb-4">User Details & Subscriptions</h2>
                     <p className="text-sm text-gray-600 mb-4">View active users, alter score entries, or force-sync Stripe.</p>
                     <div className="flex gap-2">
-                         <input type="email" placeholder="Search user email..." className="input-field py-2" />
-                         <button className="btn-primary py-2 px-6">Search</button>
+                         <input
+                            type="email"
+                            placeholder="Search user email..."
+                            className="input-field py-2"
+                            value={userQuery}
+                            onChange={(e) => setUserQuery(e.target.value)}
+                         />
+                         <button onClick={handleSearchUser} className="btn-primary py-2 px-6">Search</button>
+                    </div>
+                    <div className="mt-4 border rounded overflow-hidden">
+                        {userSearchLoading ? (
+                            <p className="text-sm text-gray-500 p-3">Searching...</p>
+                        ) : userResults.length === 0 ? (
+                            <p className="text-sm text-gray-400 p-3">No users loaded. Search by email above.</p>
+                        ) : (
+                            <table className="min-w-full text-xs">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="text-left px-2 py-2">Email</th>
+                                        <th className="text-left px-2 py-2">Role</th>
+                                        <th className="text-left px-2 py-2">Subscription</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {userResults.map((u) => (
+                                        <tr key={u.id} className="border-t">
+                                            <td className="px-2 py-2">{u.email || '-'}</td>
+                                            <td className="px-2 py-2">{u.role || 'user'}</td>
+                                            <td className="px-2 py-2">{u.subscription_status || 'inactive'} ({u.subscription_plan || 'free'})</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>

@@ -6,6 +6,16 @@ const { requireAdmin } = require('../middleware/requireAdmin');
 
 router.use(requireAuth, requireAdmin);
 
+const slugify = (value = '') =>
+  value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
 // ... existing code for auth, etc. ...
 // This file assumes a basic structure as per user requirements
 // Admin: Manually verify an existing user's email bypassing auth requirements
@@ -37,6 +47,104 @@ router.post('/users', async (req, res) => {
     }
 
     res.json({ message: 'User created and verified successfully by Admin', user: data.user });
+});
+
+// Admin: Find users by email
+router.get('/users/search', async (req, res) => {
+    const email = (req.query.email || '').toString().trim();
+    if (!email) {
+        return res.status(400).json({ error: 'Email query is required' });
+    }
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, role, subscription_status, subscription_plan, charity_id, created_at, updated_at')
+        .ilike('email', `%${email}%`)
+        .limit(20);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+});
+
+// Admin: Charity management - list all
+router.get('/charities', async (_req, res) => {
+    const { data, error } = await supabase
+        .from('charities')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+});
+
+// Admin: Charity management - create
+router.post('/charities', async (req, res) => {
+    const { name, description, is_active = true, is_featured = false, slug } = req.body || {};
+    if (!name || !description) {
+        return res.status(400).json({ error: 'name and description are required' });
+    }
+
+    const resolvedSlug = slugify(slug || name);
+    if (!resolvedSlug) {
+        return res.status(400).json({ error: 'A valid charity slug could not be generated' });
+    }
+
+    const { data, error } = await supabase
+        .from('charities')
+        .insert([{
+            name: name.trim(),
+            description: description.trim(),
+            slug: resolvedSlug,
+            is_active: Boolean(is_active),
+            is_featured: Boolean(is_featured)
+        }])
+        .select()
+        .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+});
+
+// Admin: Charity management - update
+router.put('/charities/:id', async (req, res) => {
+    const { id } = req.params;
+    const patch = {};
+    const allowed = ['name', 'description', 'is_active', 'is_featured', 'total_contributions', 'slug'];
+
+    allowed.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) {
+            patch[key] = req.body[key];
+        }
+    });
+
+    if (patch.name && !patch.slug) {
+        patch.slug = slugify(patch.name);
+    }
+    if (patch.slug) {
+        patch.slug = slugify(patch.slug);
+    }
+
+    if (Object.keys(patch).length === 0) {
+        return res.status(400).json({ error: 'No valid fields provided for update' });
+    }
+
+    const { data, error } = await supabase
+        .from('charities')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+});
+
+// Admin: Charity management - delete
+router.delete('/charities/:id', async (req, res) => {
+    const { id } = req.params;
+    const { error } = await supabase
+        .from('charities')
+        .delete()
+        .eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
 });
 
 router.post('/draws', async (req, res) => {

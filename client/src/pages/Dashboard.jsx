@@ -218,7 +218,7 @@ const Dashboard = () => {
                                 <li key={win.id} className="py-4 flex justify-between items-center border-t border-amber-200/50">
                                    <div>
                                        <p className="font-bold text-gray-900">{win.draw_month} Draw (<span className="text-blue-600">{win.match_count} Matches</span>)</p>
-                                       <p className="text-sm text-gray-600">Prize Amount: <span className="font-medium">£{win.prize}</span> | Status: <span className="uppercase text-xs font-bold text-amber-600">{win.status}</span></p>
+                                       <p className="text-sm text-gray-600">Prize Amount: <span className="font-medium">₹{win.prize}</span> | Status: <span className="uppercase text-xs font-bold text-amber-600">{win.status}</span></p>
                                    </div>
                                    <div>
                                        {win.proof_url ? (
