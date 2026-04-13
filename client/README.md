@@ -4,11 +4,6 @@ Full-stack web platform where users subscribe, upload their latest golf stablefo
 
 This project is built to show real-world engineering skills for placements: authentication, role-based access, payment integration, protected APIs, admin workflows, and clean frontend UX.
 
-## Project Preview
-
-![Platform Hero](./public/img/hero.png)
-
-![Platform Logo](./public/img/logo1.png)
 
 ## Why This Project
 
